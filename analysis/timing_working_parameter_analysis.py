@@ -3,7 +3,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from dataclasses import dataclass
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from uuid import UUID
 import math
 import grpc
@@ -88,7 +88,7 @@ while True:
         # Calculate analysis begin time
         t_os = t - SHIFT_OFFSET
         begin_t = t_os - (t_os % SHIFT_PERIOD) + SHIFT_OFFSET - SHIFT_PERIOD
-        begin = datetime.utcfromtimestamp(begin_t)
+        begin = datetime.fromtimestamp(begin_t, timezone.utc)
 
         # Create command buffer for registered devices with running hour sensor status (ANALYSIS_2) and shift period as data
         for device_id in device_map:

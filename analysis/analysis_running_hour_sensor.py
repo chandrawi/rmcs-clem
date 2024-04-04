@@ -179,13 +179,13 @@ while True:
             print("    start: {:4d}    stop: {:4d}".format(running_period[0], running_period[1]))
 
         # Create running hour buffer
-        for running_period in running_periods:
+        for index, running_period in enumerate(running_periods):
             timestamp = begin + timedelta(seconds=running_period[0])
             period = running_period[1] - running_period[0]
             time_str = timestamp.strftime("%Y-%m-%d %H:%M:%S")
             try:
                 print("{}    {}    {}".format(time_str, command.device_id, period))
-                resource.create_buffer(command.device_id, model_sensor.id, timestamp, [period], "TRANSFER_LOCAL")
+                resource.create_buffer(command.device_id, model_sensor.id, timestamp, [index, period], "TRANSFER_LOCAL")
             except grpc.RpcError as error:
                 print(error)
                 # check if buffer already exist, update if exists

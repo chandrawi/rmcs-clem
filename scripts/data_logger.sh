@@ -10,7 +10,7 @@ do
 	then
 
 		printf "rerun data logger script...\n"
-		sudo /opt/rmcs-gateway/.venv/bin/python /opt/rmcs-gateway/data_logger/logger_lora.py &
+		/opt/rmcs-gateway/.venv/bin/python /opt/rmcs-gateway/data_logger/logger_lora.py &
 
 	fi
 
