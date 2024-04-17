@@ -41,7 +41,7 @@ for token in login_main.access_tokens:
     print("refresh_token = {}".format(token.refresh_token))
 
 # read gateway and devices
-gateway_id = UUID(config.GATEWAY_LORA['id'])
+gateway_id = UUID(config.GATEWAYS[0])
 devices = resource.list_device_by_gateway(gateway_id)
 model_ids = []
 type_ids = []

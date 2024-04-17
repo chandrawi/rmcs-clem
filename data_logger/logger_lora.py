@@ -7,7 +7,7 @@ from datetime import datetime
 from uuid import UUID
 import grpc
 from rmcs_api_client.auth import Auth
-from rmcs_api_client.resource import Resource
+from rmcs_api_client.resource import Resource, DeviceSchema
 import config
 from LoRaRF import SX126x, LoRaSpi, LoRaGpio
 
@@ -93,7 +93,13 @@ for token in login.access_tokens:
 
 # Read devices associated with configured gateway
 device_map: dict[Id, DeviceMap] = {}
-devices = resource.list_device_by_gateway(UUID(config.GATEWAY_LORA['id']))
+devices: list[DeviceSchema] = []
+for gateway_id in config.GATEWAYS:
+    device_list = resource.list_device_by_gateway(UUID(gateway_id))
+    for index, device in enumerate(device_list):
+        if device.id == device.gateway_id:
+            device_list.pop(index)
+    devices = devices + device_list
 for device in devices:
     if device.id != device.gateway_id: # filter out gateway
         gateway_id = None
@@ -145,7 +151,6 @@ def lora_receive(timeout: int = LoRa.RX_SINGLE) -> Receive | None:
         if LoRa.available() <= 2: return None
         # Check gateway ID and get node ID
         id = Id(LoRa.read(), LoRa.read())
-        # if id.gateway != config.GATEWAY_LORA['lora_id']: return None
         # Get received message
         return Receive(id, LoRa.read(LoRa.available()))
 

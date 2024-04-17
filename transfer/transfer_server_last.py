@@ -7,7 +7,7 @@ from datetime import datetime
 from uuid import UUID
 import grpc
 from rmcs_api_client.auth import Auth
-from rmcs_api_client.resource import Resource
+from rmcs_api_client.resource import Resource, DeviceSchema
 import config
 
 
@@ -40,12 +40,14 @@ for token in login_main.access_tokens:
     print("access_token  = {}".format(token.access_token))
     print("refresh_token = {}".format(token.refresh_token))
 
-# read devices on a gateway
-gateway_id = UUID(config.GATEWAY_LORA['id'])
-devices = resource.list_device_by_gateway(gateway_id)
-for index, device in enumerate(devices):
-    if device.id == device.gateway_id:
-        devices.pop(index)
+# read devices on the gateways
+devices: list[DeviceSchema] = []
+for gateway_id in config.GATEWAYS:
+    device_list = resource.list_device_by_gateway(UUID(gateway_id))
+    for index, device in enumerate(device_list):
+        if device.id == device.gateway_id:
+            device_list.pop(index)
+    devices = devices + device_list
 
 print("DEVICES:")
 device_map = {}

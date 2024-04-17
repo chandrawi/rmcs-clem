@@ -342,7 +342,7 @@ for key, type_ in TYPES.items():
 
 # create gateway
 gateway_map = {}
-gateway_id = UUID(config.GATEWAY_LORA['id'])
+gateway_id = UUID(config.GATEWAYS[0])
 # gateway_id = uuid.uuid4()
 type_id = type_map[GATEWAY.type]
 resource.create_gateway(gateway_id, type_id, GATEWAY.serial_number, GATEWAY.name, GATEWAY.description)

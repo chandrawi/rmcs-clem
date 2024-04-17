@@ -28,11 +28,9 @@ API = {
     "password": "Ap1_P4s5w0rd"
 }
 
-GATEWAY_LORA = {
-    "id": "00000000-0000-0000-0000-000000000000",
-    "lora_id": 1,
-    "period_time": 60
-}
+GATEWAYS = [
+    "00000000-0000-0000-0000-000000000000"
+]
 
 TIMING = {
     "transfer_sleep": 1,
