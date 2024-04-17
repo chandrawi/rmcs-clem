@@ -2,7 +2,7 @@ import sys
 import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 import time
-import datetime
+from datetime import date, datetime, timedelta, timezone
 from uuid import UUID
 import grpc
 import psycopg
@@ -15,10 +15,12 @@ import config
 DAY_IN_SEC = 86400
 SHIFT_PERIOD = 43200
 SHIFT_OFFSET = 21600
+# External database timezone
+TZ_EXTERNAL = 7
 
-def getDateShift(timestamp: datetime.datetime) -> tuple[datetime.date, int]:
+def getDateShift(timestamp: datetime) -> tuple[date, int]:
     t = timestamp.timestamp() - time.timezone - SHIFT_OFFSET
-    dt = datetime.datetime.utcfromtimestamp(t)
+    dt = datetime.fromtimestamp(t, timezone.utc)
     if (t % DAY_IN_SEC) < SHIFT_PERIOD:
         return (dt.date(), 1)
     else:
@@ -37,7 +39,7 @@ def fetchone(query, params):
 
 def create_running_hour_data(
         equipment_id: UUID, 
-        timestamp: datetime.datetime, 
+        timestamp: datetime, 
         active_energy: float, 
         apparent_energy: float, 
         frequency: float, 
@@ -54,21 +56,22 @@ def create_running_hour_data(
 
 def create_running_hour_sensor(
         equipment_id: UUID, 
-        date: datetime.date, 
+        date: date, 
         shift: int, 
-        time_begin: datetime.datetime, 
-        time_end: datetime.datetime
+        time_begin: datetime, 
+        time_end: datetime,
+        index: int
     ):
     query = """
-        INSERT INTO running_hour_sensor (equipment_id, date, shift, time_begin, time_end) 
-        VALUES (%s, %s, %s, %s, %s);
+        INSERT INTO running_hour_sensor (equipment_id, date, shift, time_begin, time_end, index) 
+        VALUES (%s, %s, %s, %s, %s, %s);
         """
-    params = (equipment_id, date, shift, time_begin, time_end)
+    params = (equipment_id, date, shift, time_begin, time_end, index)
     execute(query, params)
 
 def read_running_hour_data(
         equipment_id: UUID, 
-        timestamp: datetime.datetime
+        timestamp: datetime
     ):
     query = """
         SELECT equipment_id, timestamp
@@ -80,8 +83,8 @@ def read_running_hour_data(
 
 def read_running_hour_sensor(
         equipment_id: UUID, 
-        time_begin: datetime.datetime, 
-        time_end: datetime.datetime, 
+        time_begin: datetime, 
+        time_end: datetime, 
     ):
     query = """
         SELECT equipment_id, timestamp
@@ -91,25 +94,28 @@ def read_running_hour_sensor(
     params = (equipment_id, time_begin, time_end)
     return fetchone(query, params)
 
-def transfer_external_server(model: ModelSchema, equipment_id: UUID, timestamp: datetime.datetime, data: list):
-    # tz = timezone('Asia/Jakarta')
-    # timestamp = timestamp.replace(tzinfo=tz)
+def transfer_external_server(model: ModelSchema, equipment_id: UUID, timestamp: datetime, data: list):
+    tz = timezone(timedelta(hours=TZ_EXTERNAL))
+    timestamp = timestamp.replace(tzinfo=tz)
     if model.name == "running hour basic data":
         try:
             create_running_hour_data(equipment_id, timestamp, data[0], data[1], data[2], data[3], data[4], data[5])
         except Exception as error:
             print(error)
+        return 2 # Delete status
     elif model.name == "running hour sensor":
         try:
             date, shift = getDateShift(timestamp)
-            time_end = timestamp + datetime.timedelta(seconds=data[0])
-            create_running_hour_sensor(equipment_id, date, shift, timestamp, time_end)
+            time_end = timestamp + timedelta(seconds=data[1])
+            create_running_hour_sensor(equipment_id, date, shift, timestamp, time_end, data[0])
         except Exception as error:
             print(error)
+        return 23
     else:
         print("Model is not recognized")
+        return 2
 
-def check_external_server(model: ModelSchema, equipment_id: UUID, timestamp: datetime.datetime, data: list = []):
+def check_external_server(model: ModelSchema, equipment_id: UUID, timestamp: datetime, data: list = []) -> bool:
     if model.name == "running hour basic data":
         try:
             if read_running_hour_data(equipment_id, timestamp) != None: return True
@@ -117,7 +123,7 @@ def check_external_server(model: ModelSchema, equipment_id: UUID, timestamp: dat
             print(error)
     elif model.name == "running hour sensor":
         try:
-            time_end = timestamp + datetime.timedelta(seconds=data[0])
+            time_end = timestamp + timedelta(seconds=data[0])
             if read_running_hour_sensor(equipment_id, timestamp, time_end) != None: return True
         except Exception as error:
             print(error)
@@ -191,9 +197,10 @@ while True:
 
         # try to transfer data to external database
         external_exist = True
+        status = 2 # Delete buffer as default
         try:
             if buffer.model_id in model_map:
-                transfer_external_server(model_map[buffer.model_id], buffer.device_id, buffer.timestamp, buffer.data)
+                status = transfer_external_server(model_map[buffer.model_id], buffer.device_id, buffer.timestamp, buffer.data)
         except Exception as error:
             print(error)
             # check if data on external server already exist
@@ -203,11 +210,14 @@ while True:
                 external_exist = False
                 print(error)
 
-        # delete buffer only if data on external server exists
+        # delete buffer or update status only if data on external server exists
         if external_exist:
             try:
-                # resource.delete_buffer(buffer.id)
-                resource.update_buffer(buffer.id, None, "DEFAULT")
+                if status == 2:
+                    # resource.delete_buffer(buffer.id)
+                    resource.update_buffer(buffer.id, None, "DEFAULT")
+                else:
+                    resource.update_buffer(buffer.id, None, status)
             except grpc.RpcError as error:
                 print(error)
 
