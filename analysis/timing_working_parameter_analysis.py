@@ -3,7 +3,7 @@ import os
 sys.path.append(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 from dataclasses import dataclass
 import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime
 from uuid import UUID
 import math
 import grpc
@@ -83,12 +83,12 @@ while True:
     t = time.time() - time.timezone
 
     # Trigger running hour sensor analysis every end of shift plus wait complete time
-    if int((t - SHIFT_OFFSET) % SHIFT_PERIOD) == WAIT_COMPLETE_TIME:
+    t_os = t - SHIFT_OFFSET
+    if int(t_os % SHIFT_PERIOD) == WAIT_COMPLETE_TIME:
 
         # Calculate analysis begin time
-        t_os = t - SHIFT_OFFSET
-        begin_t = t_os - (t_os % SHIFT_PERIOD) + SHIFT_OFFSET - SHIFT_PERIOD
-        begin = datetime.fromtimestamp(begin_t, timezone.utc)
+        begin_t = t_os - (t_os % SHIFT_PERIOD) + SHIFT_OFFSET - SHIFT_PERIOD + time.timezone
+        begin = datetime.fromtimestamp(begin_t)
 
         # Create command buffer for registered devices with running hour sensor status (ANALYSIS_2) and shift period as data
         for device_id in device_map:

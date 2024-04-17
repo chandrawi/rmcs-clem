@@ -149,6 +149,8 @@ while True:
         for key in data_filter:
             if data_filter[key]:
                 stop = key
+                if key == shift_period:
+                    running_periods.append((start, stop))
             else:
                 if stop - start > 0:
                     running_periods.append((start, stop))
