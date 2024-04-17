@@ -37,3 +37,15 @@ TIMING = {
     "analysis_sleep": 1,
     "max_drift": 0.5
 }
+
+STATUS = {
+    "logger_lora_end": "ANALYSIS_1",
+    "transfer_local_raw": "DELETE",
+    "transfer_local_end": "TRANSFER_SERVER",
+    "transfer_server_end": "DELETE",
+    "transfer_external_db_begin": "EXTERNAL_OUTPUT",
+    "transfer_external_db_end": "DELETE",
+    "transfer_external_db_next": 23,
+    "transfer_external_api_begin": 23,
+    "transfer_external_api_end": "DELETE"
+}

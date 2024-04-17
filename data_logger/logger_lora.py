@@ -195,8 +195,8 @@ while True:
                 if i < (len(receive.binary) - 1): message += ","
             message += ")"
             print("{}    {}    [{:3d},{:3d}]    {}    RSSI: {} | SNR: {}".format(timeString, device.id, receive.id.gateway, receive.id.node, message, LoRa.packetRssi(), LoRa.snr()))
-            # Create buffer data with ANALYSIS_1 status
-            resource.create_buffer(device.id, device.model, datetime.fromtimestamp(timeData), receive.binary, "ANALYSIS_1")
+            # Create buffer data with configured status
+            resource.create_buffer(device.id, device.model, datetime.fromtimestamp(timeData), receive.binary, config.STATUS['logger_lora_end'])
 
         except grpc.RpcError as error:
             if error.code() == grpc.StatusCode.UNAUTHENTICATED:

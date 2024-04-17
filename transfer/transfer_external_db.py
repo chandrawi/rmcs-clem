@@ -102,7 +102,7 @@ def transfer_external_server(model: ModelSchema, equipment_id: UUID, timestamp: 
             create_running_hour_data(equipment_id, timestamp, data[0], data[1], data[2], data[3], data[4], data[5])
         except Exception as error:
             print(error)
-        return 2 # Delete status
+        return False
     elif model.name == "running hour sensor":
         try:
             date, shift = getDateShift(timestamp)
@@ -110,10 +110,10 @@ def transfer_external_server(model: ModelSchema, equipment_id: UUID, timestamp: 
             create_running_hour_sensor(equipment_id, date, shift, timestamp, time_end, data[0])
         except Exception as error:
             print(error)
-        return 23
+        return True
     else:
         print("Model is not recognized")
-        return 2
+        return False
 
 def check_external_server(model: ModelSchema, equipment_id: UUID, timestamp: datetime, data: list = []) -> bool:
     if model.name == "running hour basic data":
@@ -174,7 +174,7 @@ while True:
     # read buffers
     buffers = []
     try:
-        buffers = resource.list_buffer_first(100, None, None, "EXTERNAL_OUTPUT")
+        buffers = resource.list_buffer_first(100, None, None, config.STATUS['transfer_external_db_begin'])
     except grpc.RpcError as error:
         if error.code() == grpc.StatusCode.UNAUTHENTICATED:
             login = auth.user_login(config.SERVER_LOCAL['admin_name'], config.SERVER_LOCAL['admin_password'])
@@ -197,10 +197,10 @@ while True:
 
         # try to transfer data to external database
         external_exist = True
-        status = 2 # Delete buffer as default
+        transfer_next = False
         try:
             if buffer.model_id in model_map:
-                status = transfer_external_server(model_map[buffer.model_id], buffer.device_id, buffer.timestamp, buffer.data)
+                transfer_next = transfer_external_server(model_map[buffer.model_id], buffer.device_id, buffer.timestamp, buffer.data)
         except Exception as error:
             print(error)
             # check if data on external server already exist
@@ -210,14 +210,19 @@ while True:
                 external_exist = False
                 print(error)
 
-        # delete buffer or update status only if data on external server exists
+        # delete or update status based on configuration only if data on external server exists
         if external_exist:
             try:
-                if status == 2:
-                    # resource.delete_buffer(buffer.id)
-                    resource.update_buffer(buffer.id, None, "DEFAULT")
+                if transfer_next:
+                    if config.STATUS['transfer_external_db_next'] == "DELETE":
+                        resource.delete_buffer(buffer.id)
+                    else:
+                        resource.update_buffer(buffer.id, None, config.STATUS['transfer_external_db_next'])
                 else:
-                    resource.update_buffer(buffer.id, None, status)
+                    if config.STATUS['transfer_external_db_end'] == "DELETE":
+                        resource.delete_buffer(buffer.id)
+                    else:
+                        resource.update_buffer(buffer.id, None, config.STATUS['transfer_external_db_end'])
             except grpc.RpcError as error:
                 print(error)
 
