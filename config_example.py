@@ -49,3 +49,8 @@ STATUS = {
     "transfer_external_api_begin": 23,
     "transfer_external_api_end": "DELETE"
 }
+
+EXTERNAL_API = {
+    "token": "CUNeYi2wBCFKtsC4CbVbiOnoeYY89yKC",
+    "url": "http://batubara.koneksi.cloud:8080/api/v1/report-start-finish"
+}
